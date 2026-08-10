@@ -1,9 +1,10 @@
 import re
-from nltk.corpus import stopwords
+from nltk.corpus import stopwords, words as nltk_words
 from nltk.stem import WordNetLemmatizer
 
 _STOP_WORDS = set(stopwords.words('english'))
 _lemmatizer = WordNetLemmatizer()
+_ENGLISH_VOCAB = set(w.lower() for w in nltk_words.words())
 
 
 def clean_text(text: str) -> str:
@@ -32,3 +33,21 @@ def lemmatize(tokens: list) -> list:
 def preprocess_pipeline(text: str) -> list:
     """Full pipeline: clean → tokenize → remove stopwords → lemmatize."""
     return lemmatize(remove_stopwords(tokenize(clean_text(text))))
+
+
+def rating_to_sentiment(rating: int) -> str:
+    """Map a 1-5 rating to a sentiment class (positivo/neutro/negativo)."""
+    if rating >= 4:
+        return 'positivo'
+    if rating == 3:
+        return 'neutro'
+    return 'negativo'
+
+
+def eh_hinglish(texto: str, limiar: float = 0.50) -> bool:
+    """True if fewer than `limiar` of the text's tokens are recognized English words."""
+    tokens = re.sub(r'[^a-z\s]', '', str(texto).lower()).split()
+    if not tokens:
+        return True
+    pct_en = sum(1 for t in tokens if t in _ENGLISH_VOCAB) / len(tokens)
+    return pct_en < limiar
