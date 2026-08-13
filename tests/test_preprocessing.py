@@ -15,6 +15,10 @@ def test_clean_text_collapses_whitespace():
     assert clean_text("multiple   spaces   here") == "multiple spaces here"
 
 
+def test_clean_text_decodes_html_entities_without_leaving_amp_token():
+    assert clean_text("chicken &amp; rice") == "chicken rice"
+
+
 @pytest.mark.parametrize(
     "rating,esperado",
     [(1, "negativo"), (2, "negativo"), (3, "neutro"), (4, "positivo"), (5, "positivo")],

@@ -1,3 +1,4 @@
+import html
 import re
 from nltk.corpus import stopwords, words as nltk_words
 from nltk.stem import WordNetLemmatizer
@@ -8,8 +9,8 @@ _ENGLISH_VOCAB = set(w.lower() for w in nltk_words.words())
 
 
 def clean_text(text: str) -> str:
-    """Lowercase, strip HTML tags, remove non-alpha characters, normalize whitespace."""
-    text = str(text).lower()
+    """Decode HTML entities, lowercase, strip HTML tags, remove non-alpha characters, normalize whitespace."""
+    text = html.unescape(str(text)).lower()
     text = re.sub(r'<[^>]+>', ' ', text)
     text = re.sub(r'[^a-z\s]', ' ', text)
     return re.sub(r'\s+', ' ', text).strip()
