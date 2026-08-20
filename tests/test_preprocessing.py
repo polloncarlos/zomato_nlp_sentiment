@@ -1,22 +1,36 @@
 import pytest
 
-from src.preprocessing import clean_text, eh_hinglish, preprocess_pipeline, rating_to_sentiment
+from src.preprocessing import (
+    clean_html,
+    eh_hinglish,
+    normalize_token,
+    preprocess_pipeline,
+    rating_to_sentiment,
+)
 
 
-def test_clean_text_strips_html_without_gluing_words():
-    assert clean_text("ever<br/>No") == "ever no"
+def test_clean_html_strips_html_without_gluing_words():
+    assert clean_html("ever<br/>No") == "ever No"
 
 
-def test_clean_text_lowercases_and_removes_punctuation():
-    assert clean_text("Bad!!! Service.") == "bad service"
+def test_clean_html_preserves_case_and_punctuation():
+    assert clean_html("Bad!!! Service.") == "Bad!!! Service."
 
 
-def test_clean_text_collapses_whitespace():
-    assert clean_text("multiple   spaces   here") == "multiple spaces here"
+def test_clean_html_collapses_whitespace():
+    assert clean_html("multiple   spaces   here") == "multiple spaces here"
 
 
-def test_clean_text_decodes_html_entities_without_leaving_amp_token():
-    assert clean_text("chicken &amp; rice") == "chicken rice"
+def test_clean_html_decodes_html_entities_without_leaving_amp_token():
+    assert clean_html("chicken &amp; rice") == "chicken & rice"
+
+
+def test_normalize_token_lowercases_and_removes_punctuation():
+    assert normalize_token("Bad!!!") == "bad"
+
+
+def test_normalize_token_pure_punctuation_becomes_empty():
+    assert normalize_token("!!!") == ""
 
 
 @pytest.mark.parametrize(
@@ -41,3 +55,19 @@ def test_preprocess_pipeline_remove_stopwords():
     assert "tasty" in tokens
     assert "the" not in tokens
     assert "was" not in tokens
+
+
+def test_preprocess_pipeline_stopword_removal_does_not_leak_irregular_lemma():
+    tokens = preprocess_pipeline("The food was great")
+    assert "be" not in tokens
+
+
+def test_preprocess_pipeline_lemmatizes_verb_using_pos_tag():
+    tokens = preprocess_pipeline("I never received my order")
+    assert "receive" in tokens
+    assert "received" not in tokens
+
+
+def test_preprocess_pipeline_decodes_html_entities_without_leaving_amp_token():
+    tokens = preprocess_pipeline("chicken &amp; rice")
+    assert "amp" not in tokens
