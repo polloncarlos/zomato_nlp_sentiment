@@ -4,9 +4,16 @@ import nltk
 from nltk.corpus import stopwords, words as nltk_words, wordnet
 from nltk.stem import WordNetLemmatizer
 
-_STOP_WORDS = set(stopwords.words('english'))
+_NEGATION_WORDS = {'not', 'no', 'nor'}
+_STOP_WORDS = set(stopwords.words('english')) - _NEGATION_WORDS
 _lemmatizer = WordNetLemmatizer()
 _ENGLISH_VOCAB = set(w.lower() for w in nltk_words.words())
+
+_WHOLE_WORD_CONTRACTIONS = {
+    "won't": "will not",
+    "shan't": "shall not",
+    "can't": "can not",
+}
 
 
 def clean_html(text: str) -> str:
@@ -14,6 +21,30 @@ def clean_html(text: str) -> str:
     text = html.unescape(str(text))
     text = re.sub(r'<[^>]+>', ' ', text)
     return re.sub(r'\s+', ' ', text).strip()
+
+
+def _preserve_case(replacement: str):
+    def repl(match):
+        matched = match.group(0)
+        if matched[:1].isupper():
+            return replacement[:1].upper() + replacement[1:]
+        return replacement
+    return repl
+
+
+def expand_contractions(text: str) -> str:
+    """Expand n't contractions so negation survives stopword removal as its own token.
+
+    `nltk.word_tokenize` splits `n't` irregularly (`won't` -> `wo`/`n't`,
+    `can't` -> `ca`/`n't`), leaving meaningless orphan fragments and a `nt`
+    token that only survives by accident (it isn't recognized as `not` by
+    the stopword filter). Expanding first turns negation into a real,
+    filterable/keepable word.
+    """
+    for contraction, expansion in _WHOLE_WORD_CONTRACTIONS.items():
+        pattern = re.compile(r'\b' + re.escape(contraction) + r'\b', re.IGNORECASE)
+        text = pattern.sub(_preserve_case(expansion), text)
+    return re.sub(r"n't\b", ' not', text, flags=re.IGNORECASE)
 
 
 def tokenize_raw(text: str) -> list:
@@ -58,8 +89,8 @@ def lemmatize_tagged(tagged_tokens: list) -> list:
 
 
 def preprocess_pipeline(text: str) -> list:
-    """Full pipeline: strip HTML → tokenize → POS tag → remove stopwords → lemmatize."""
-    tokens = tokenize_raw(clean_html(text))
+    """Full pipeline: strip HTML → expand contractions → tokenize → POS tag → remove stopwords → lemmatize."""
+    tokens = tokenize_raw(expand_contractions(clean_html(text)))
     tagged = tag_pos(tokens)
     filtered = remove_stopwords(tagged)
     return lemmatize_tagged(filtered)

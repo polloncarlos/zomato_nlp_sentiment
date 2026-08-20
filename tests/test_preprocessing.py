@@ -3,6 +3,7 @@ import pytest
 from src.preprocessing import (
     clean_html,
     eh_hinglish,
+    expand_contractions,
     normalize_token,
     preprocess_pipeline,
     rating_to_sentiment,
@@ -71,3 +72,30 @@ def test_preprocess_pipeline_lemmatizes_verb_using_pos_tag():
 def test_preprocess_pipeline_decodes_html_entities_without_leaving_amp_token():
     tokens = preprocess_pipeline("chicken &amp; rice")
     assert "amp" not in tokens
+
+
+def test_expand_contractions_irregular_forms():
+    assert expand_contractions("won't") == "will not"
+    assert expand_contractions("can't") == "can not"
+    assert expand_contractions("shan't") == "shall not"
+
+
+def test_expand_contractions_preserves_leading_case():
+    assert expand_contractions("Won't") == "Will not"
+
+
+def test_expand_contractions_generic_nt_suffix():
+    assert expand_contractions("didn't") == "did not"
+    assert expand_contractions("wasn't") == "was not"
+
+
+def test_preprocess_pipeline_keeps_negation_as_own_token():
+    tokens = preprocess_pipeline("The food didn't arrive on time")
+    assert "not" in tokens
+    assert "nt" not in tokens
+
+
+def test_preprocess_pipeline_wont_expands_without_orphan_fragment():
+    tokens = preprocess_pipeline("I won't order again")
+    assert "not" in tokens
+    assert "wo" not in tokens
